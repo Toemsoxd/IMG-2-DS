@@ -4,6 +4,11 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DS Retro Graphic Converter</title>
+    
+    <!-- Website Icon / Favicon (Change href to your github asset path, e.g., "favicon.png") -->
+    <link rel="icon" href="favicon.png" type="image/png">
+    <link rel="shortcut icon" href="favicon.png" type="image/png">
+
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- Google Fonts: Inter & JetBrains Mono -->
@@ -52,8 +57,22 @@
     <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-50 px-4 py-3 sm:px-6">
         <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
             <div class="flex items-center gap-3">
-                <div class="bg-gradient-to-tr from-blue-600 to-sky-400 p-2 rounded-lg shadow-lg shadow-blue-500/10">
-                    <i data-lucide="gamepad-2" class="w-6 h-6 text-white"></i>
+                <!-- Custom Nintendo DS SVG Icon -->
+                <div class="bg-gradient-to-tr from-blue-600 to-sky-400 p-2 rounded-lg shadow-lg shadow-blue-500/10 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-white" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+                        <!-- Top Shell / Screen -->
+                        <rect x="4" y="3" width="16" height="8" rx="1.5" />
+                        <rect x="7" y="5" width="10" height="4" rx="0.5" stroke-width="1.5" />
+                        <!-- Connection Hinge -->
+                        <rect x="9" y="11" width="6" height="1.5" rx="0.5" fill="currentColor" />
+                        <!-- Bottom Shell / Lower Touch Screen -->
+                        <rect x="3" y="13" width="18" height="8" rx="1.5" />
+                        <rect x="8" y="15" width="8" height="4" rx="0.5" stroke-width="1.5" />
+                        <!-- Buttons & D-Pad representation -->
+                        <line x1="5.5" y1="17" x2="6.5" y2="17" stroke-width="1.5"/>
+                        <line x1="6" y1="16.5" x2="6" y2="17.5" stroke-width="1.5"/>
+                        <circle cx="17.5" cy="17" r="0.6" fill="currentColor"/>
+                    </svg>
                 </div>
                 <div>
                     <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-sky-500 bg-clip-text text-transparent">DS Graphics Studio</h1>
@@ -757,28 +776,6 @@
             });
             const activeBtn = document.getElementById(`dither-${mode}`);
             if (activeBtn) activeBtn.className = "py-1 px-1.5 rounded text-[10px] font-medium transition bg-white text-blue-600 border border-slate-200/60 shadow-sm";
-            handleConversionFlow();
-        }
-
-        // Setup Scaling Algorithm Mode selection
-        function setScalingMethod(method) {
-            scalingMethod = method;
-            document.querySelectorAll("#scale-supersample, #scale-nearest").forEach(btn => {
-                btn.className = "py-1 px-1 text-[10px] font-medium rounded transition text-slate-400 hover:text-slate-200";
-            });
-            const activeBtn = document.getElementById(`scale-${method}`);
-            if (activeBtn) activeBtn.className = "py-1 px-1 text-[10px] font-medium rounded transition bg-slate-800 text-emerald-400";
-            handleConversionFlow();
-        }
-
-        // Setup Shading/Dithering Engine Mode selection
-        function setDithering(mode) {
-            currentDithering = mode;
-            document.querySelectorAll("#dither-none, #dither-bayer, #dither-fs").forEach(btn => {
-                btn.className = "py-1 px-1.5 rounded text-[10px] font-medium transition text-slate-400 hover:text-slate-200";
-            });
-            const activeBtn = document.getElementById(`dither-${mode}`);
-            if (activeBtn) activeBtn.className = "py-1 px-1.5 rounded text-[10px] font-medium transition bg-slate-800 text-emerald-400";
             handleConversionFlow();
         }
 
@@ -1683,6 +1680,7 @@
             });
         }
 
+        // Swatch Detail View
         function selectSwatchDetail(idx, col, hexVal) {
             selectedPaletteIndex = idx;
             colorDetailPanel.classList.remove("hidden");
