@@ -1,0 +1,1865 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DS Retro Graphic Converter</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts: Inter & JetBrains Mono -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- JSZip library (for ZIP export) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .mono {
+            font-family: 'JetBrains Mono', monospace;
+        }
+        /* Retro Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+        /* Transparent checkered background - adjusted for light theme */
+        .pixel-bg {
+            background-image: linear-gradient(45deg, #e2e8f0 25%, transparent 25%), 
+                              linear-gradient(-45deg, #e2e8f0 25%, transparent 25%), 
+                              linear-gradient(45deg, transparent 75%, #e2e8f0 75%), 
+                              linear-gradient(-45deg, transparent 75%, #e2e8f0 75%);
+            background-size: 16px 16px;
+            background-position: 0 0, 0 8px, 8px -8px, -8px 0px;
+        }
+    </style>
+</head>
+<body class="text-slate-800 min-h-screen flex flex-col">
+
+    <!-- Header -->
+    <header class="border-b border-slate-200 bg-white/80 backdrop-blur sticky top-0 z-50 px-4 py-3 sm:px-6">
+        <div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div class="flex items-center gap-3">
+                <div class="bg-gradient-to-tr from-blue-600 to-sky-400 p-2 rounded-lg shadow-lg shadow-blue-500/10">
+                    <i data-lucide="gamepad-2" class="w-6 h-6 text-white"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-sky-500 bg-clip-text text-transparent">DS Graphics Studio</h1>
+                    <p class="text-xs text-slate-500">Optimizer for Backgrounds, Sprites, Character Sheets, SVGs, and GIFs for Nintendo DS & DSGM</p>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <main class="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-6 grid grid-cols-1 lg:grid-cols-12 gap-6">
+        
+        <!-- Side Control Panel -->
+        <section class="lg:col-span-5 xl:col-span-4 flex flex-col gap-5">
+            
+            <!-- File Loading Area -->
+            <div class="bg-white border border-slate-200 rounded-xl p-5 hover:border-slate-300 transition duration-200 shadow-sm">
+                <h2 class="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                    <i data-lucide="upload-cloud" class="w-4 h-4 text-blue-600"></i> Load Image / Vector / Animation
+                </h2>
+                
+                <div id="dropzone" class="border-2 border-dashed border-slate-200 hover:border-blue-500/50 rounded-lg p-6 text-center cursor-pointer transition bg-slate-50 relative">
+                    <input type="file" id="file-input" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer" accept="image/*, .svg, image/svg+xml">
+                    <div class="flex flex-col items-center gap-2">
+                        <i data-lucide="image" class="w-8 h-8 text-slate-400"></i>
+                        <span class="text-xs text-slate-600">Drag a file here or <span class="text-blue-600 underline font-medium">browse</span></span>
+                        <span class="text-[10px] text-slate-400">Supports PNG, JPG, BMP, SVG, Animated GIF</span>
+                    </div>
+                </div>
+                
+                <div id="file-info" class="hidden mt-3 p-2 bg-slate-50 rounded border border-slate-200 text-xs flex flex-col gap-1">
+                    <div class="flex items-center justify-between">
+                        <span class="text-slate-600 truncate max-w-[180px]" id="info-filename">-</span>
+                        <span class="text-slate-400 mono" id="info-dimensions">-</span>
+                    </div>
+                    <div id="gif-info-badge" class="hidden flex items-center gap-1.5 text-blue-600 bg-blue-50 border border-blue-100 px-1.5 py-0.5 rounded text-[10px] w-fit font-medium">
+                        <i data-lucide="film" class="w-3 h-3"></i> Animated GIF: <span id="gif-frame-count">0</span> frames
+                    </div>
+                    <div id="svg-info-badge" class="hidden flex items-center gap-1.5 text-indigo-600 bg-indigo-50 border border-indigo-100 px-1.5 py-0.5 rounded text-[10px] w-fit font-medium">
+                        <i data-lucide="feather" class="w-3 h-3"></i> SVG Vector Loaded
+                    </div>
+                </div>
+            </div>
+
+            <!-- DS Format Options -->
+            <div class="bg-white border border-slate-200 rounded-xl p-5 flex flex-col gap-4 shadow-sm">
+                <h2 class="text-sm font-semibold text-slate-700 mb-3 flex items-center gap-2">
+                    <i data-lucide="sliders" class="w-4 h-4 text-blue-600"></i> Format Settings
+                </h2>
+
+                <!-- Conversion Mode Selector -->
+                <div>
+                    <span class="text-xs text-slate-500 block mb-2 font-medium">Conversion Mode</span>
+                    <div class="grid grid-cols-2 gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200">
+                        <button id="btn-mode-bg" class="py-1.5 px-3 rounded-md text-xs font-medium transition flex items-center justify-center gap-1.5 bg-blue-600 text-white shadow-md">
+                            <i data-lucide="layout" class="w-3.5 h-3.5"></i> Backgrounds (BG)
+                        </button>
+                        <button id="btn-mode-sprite" class="py-1.5 px-3 rounded-md text-xs font-medium transition flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-700">
+                            <i data-lucide="smile" class="w-3.5 h-3.5"></i> Sprites
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Resolution Selector -->
+                <div>
+                    <span class="text-xs text-slate-500 flex items-center justify-between mb-2">
+                        <span class="font-medium">Output Resolution</span>
+                        <span id="res-info-tag" class="text-[10px] px-1.5 py-0.5 rounded bg-slate-100 text-slate-600 mono">DS Backgrounds</span>
+                    </span>
+                    <select id="resolution-select" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-lg py-2 px-3 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer">
+                        <!-- Generated dynamically -->
+                    </select>
+                </div>
+
+                <!-- Background Vertical Height Selector (Only visible in BG mode) -->
+                <div id="bg-height-container" class="border-t border-slate-100 pt-3">
+                    <span class="text-xs text-slate-500 block mb-2 font-medium">Vertical Background Height (Height)</span>
+                    <div class="grid grid-cols-3 gap-1.5 bg-slate-50 p-1 rounded-lg border border-slate-200">
+                        <button id="height-192" class="py-1 px-1.5 rounded text-[10px] font-medium transition bg-white text-blue-600 border border-slate-200/60 shadow-sm" onclick="setBgHeight(192)">192 px</button>
+                        <button id="height-256" class="py-1 px-1.5 rounded text-[10px] font-medium transition text-slate-500 hover:text-slate-700" onclick="setBgHeight(256)">256 px</button>
+                        <button id="height-512" class="py-1 px-1.5 rounded text-[10px] font-medium transition text-slate-500 hover:text-slate-700" onclick="setBgHeight(512)">512 px</button>
+                    </div>
+                    <p class="text-[9px] text-slate-400 mt-1 leading-tight">
+                        Adjusts canvas height. 192px corresponds to 1 screen, while 256px and 512px are ideal for vertically scrolling maps.
+                    </p>
+                </div>
+
+                <!-- Scaling Method (Super-Sampling vs Nearest-Neighbor) -->
+                <div class="border-t border-slate-100 pt-3">
+                    <span class="text-xs text-slate-500 block mb-2 font-medium">Scaling Algorithm</span>
+                    <div class="grid grid-cols-2 gap-2 bg-slate-50 p-1 rounded-lg border border-slate-200">
+                        <button id="scale-supersample" class="py-1 px-1 text-[10px] font-medium rounded transition bg-white text-blue-600 border border-slate-200/60 shadow-sm" onclick="setScalingMethod('supersample')">
+                            Super-Sampling (Pixel-Perfect)
+                        </button>
+                        <button id="scale-nearest" class="py-1 px-1 text-[10px] font-medium rounded transition text-slate-500 hover:text-slate-700" onclick="setScalingMethod('nearest')">
+                            Nearest-Neighbor (Pure Pixel)
+                        </button>
+                    </div>
+                    <p class="text-[9px] text-slate-400 mt-1.5 leading-tight">
+                        Use <span class="text-slate-500 font-medium">Super-Sampling</span> to keep artwork sharp and preserve line thickness and shading. Use <span class="text-slate-500 font-medium">Nearest-Neighbor</span> only if your original resource is already pixel art.
+                    </p>
+                </div>
+
+                <!-- Smart Autocrop -->
+                <div id="autocrop-container" class="border-t border-slate-100 pt-3">
+                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="autocrop-chk" checked class="rounded bg-slate-50 border-slate-200 text-blue-600 focus:ring-blue-500/20 w-4 h-4">
+                        <span class="text-xs text-slate-700 font-medium">Smart Autocrop (Remove empty margins)</span>
+                    </label>
+                    <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                        Analyzes and crops empty transparent space synchronously across all GIF frames before scaling to preserve native aspect ratio and alignment.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Palette and Color Depth -->
+            <div class="bg-white border border-slate-200 rounded-xl p-5 flex flex-col gap-4 shadow-sm">
+                <h2 class="text-sm font-semibold text-slate-700 flex items-center gap-2">
+                    <i data-lucide="palette" class="w-4 h-4 text-blue-600"></i> Color Depth & Palette
+                </h2>
+
+                <!-- DS Palette Color Mode -->
+                <div>
+                    <span class="text-xs text-slate-500 block mb-2 font-medium">Palette Mode (DS Format)</span>
+                    <select id="color-mode-select" class="w-full bg-slate-50 border border-slate-200 text-slate-800 rounded-lg py-2 px-3 text-xs focus:ring-1 focus:ring-blue-500 focus:outline-none cursor-pointer">
+                        <option value="direct">Direct Color (15-bit BGR555, non-paletted)</option>
+                        <option value="pal16" selected>Paletted 16 Colors (4-bit, Sprites/Backgrounds)</option>
+                        <option value="pal256">Paletted 256 Colors (8-bit, High Detail)</option>
+                    </select>
+                </div>
+
+                <!-- Dithering Options -->
+                <div>
+                    <span class="text-xs text-slate-500 block mb-2 font-medium">Dithering (Retro Shading)</span>
+                    <div class="grid grid-cols-3 gap-1.5 bg-slate-50 p-1 rounded-lg border border-slate-200">
+                        <button id="dither-none" class="py-1 px-1.5 rounded text-[10px] font-medium transition bg-white text-blue-600 border border-slate-200/60 shadow-sm" onclick="setDithering('none')">None</button>
+                        <button id="dither-bayer" class="py-1 px-1.5 rounded text-[10px] font-medium transition text-slate-500 hover:text-slate-700" onclick="setDithering('bayer')">Bayer 4x4</button>
+                        <button id="dither-fs" class="py-1 px-1.5 rounded text-[10px] font-medium transition text-slate-500 hover:text-slate-700" onclick="setDithering('fs')">F-Steinberg</button>
+                    </div>
+                </div>
+
+                <!-- Transparency Options by Color Keying -->
+                <div class="border-t border-slate-100 pt-3 flex flex-col gap-3">
+                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <input type="checkbox" id="transparency-chk" checked class="rounded bg-slate-50 border-slate-200 text-blue-600 focus:ring-blue-500/20 w-4 h-4">
+                        <span class="text-xs text-slate-700 font-medium">Transparency Color (Index #0)</span>
+                    </label>
+                    
+                    <div id="transparency-opts" class="flex flex-col gap-2 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                        <div class="flex items-center gap-3">
+                            <input type="color" id="transparent-color-picker" value="#FF00FF" class="w-8 h-8 rounded border border-slate-200 bg-transparent cursor-pointer">
+                            <div class="flex-1">
+                                <span class="text-[10px] text-slate-500 block font-medium">Transparent Key Color</span>
+                                <span id="trans-color-hex" class="text-xs mono text-slate-600">#FF00FF</span>
+                            </div>
+                        </div>
+
+                        <!-- Alpha Threshold -->
+                        <div class="mt-2 pt-2 border-t border-slate-100">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-[10px] text-slate-500 font-medium">Alpha Threshold (Transparency)</span>
+                                <span id="alpha-threshold-val" class="text-[10px] mono text-blue-600 font-bold">128 (50%)</span>
+                            </div>
+                            <input type="range" id="alpha-threshold-slider" min="1" max="255" value="128" class="w-full accent-blue-600 cursor-pointer">
+                            <p class="text-[8px] text-slate-400 mt-0.5 leading-tight">
+                                Lower this value (e.g. 128 or 50) to recover semi-transparent sprite edges if they disintegrate or get clipped.
+                            </p>
+                        </div>
+                        
+                        <!-- Quick Presets -->
+                        <div class="flex items-center gap-1.5 mt-1 pt-2 border-t border-slate-100">
+                            <button id="btn-preset-magenta" class="flex-1 py-1 px-1.5 bg-pink-50 hover:bg-pink-100 border border-pink-200 text-pink-600 rounded text-[9px] font-semibold transition" title="Standard transparency key in DSGM / NFlib">
+                                Magic Pink (Magenta)
+                            </button>
+                            <button id="btn-preset-black" class="py-1 px-2 bg-slate-100 hover:bg-slate-200 border border-slate-300 text-slate-700 rounded text-[9px] font-semibold transition">
+                                Black
+                            </button>
+                        </div>
+
+                        <!-- Solid Color Option for Preview -->
+                        <div class="mt-2 pt-2 border-t border-slate-100">
+                            <label class="flex items-center gap-1.5 cursor-pointer select-none">
+                                <input type="checkbox" id="force-solid-chk" checked class="rounded bg-slate-50 border-slate-200 text-blue-600 focus:ring-blue-500/20 w-3.5 h-3.5">
+                                <span class="text-[10px] text-slate-600 font-medium">Force solid background color in preview</span>
+                            </label>
+                            <p class="text-[9px] text-slate-400 mt-1 leading-tight">
+                                Shows the preview filled with the key transparency color instead of checkered transparent pattern in the inspection viewport.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+        <!-- Visualization & Inspection Section -->
+        <section class="lg:col-span-7 xl:col-span-8 flex flex-col gap-5">
+            
+            <!-- Screen Viewer -->
+            <div class="bg-white border border-slate-200 rounded-xl p-5 flex flex-col flex-1 min-h-[400px] shadow-sm">
+                <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-4 mb-4">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="eye" class="w-4.5 h-4.5 text-blue-600"></i>
+                        <span class="font-semibold text-slate-700 text-sm" id="view-title">Visualization & Inspection</span>
+                    </div>
+                    
+                    <div class="flex items-center gap-4 text-xs">
+                        <!-- Control Panel for Animated GIFs -->
+                        <div id="gif-player-controls" class="hidden flex items-center gap-1 bg-slate-50 px-2 py-1 rounded-lg border border-slate-200">
+                            <button id="btn-gif-prev" class="p-1 hover:text-blue-600 transition" title="Previous frame"><i data-lucide="skip-back" class="w-3.5 h-3.5 text-slate-600"></i></button>
+                            <button id="btn-gif-play" class="p-1 text-blue-600 hover:scale-110 transition" title="Pause / Play"><i data-lucide="play" class="w-4 h-4"></i></button>
+                            <button id="btn-gif-next" class="p-1 hover:text-blue-600 transition" title="Next frame"><i data-lucide="skip-forward" class="w-3.5 h-3.5 text-slate-600"></i></button>
+                            <span id="gif-frame-indicator" class="mono text-[10px] text-slate-400 ml-1">F: 0/0</span>
+                        </div>
+
+                        <div class="flex items-center gap-2 border-l border-slate-200 pl-4">
+                            <button id="zoom-out" class="p-1.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 transition" title="Zoom Out">
+                                <i data-lucide="zoom-out" class="w-4 h-4"></i>
+                            </button>
+                            <span id="zoom-level" class="mono text-slate-500 px-1">100%</span>
+                            <button id="zoom-in" class="p-1.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-600 transition" title="Zoom In">
+                                <i data-lucide="zoom-in" class="w-4 h-4"></i>
+                            </button>
+                            <button id="zoom-reset" class="px-2 py-1.5 rounded bg-slate-100 hover:bg-slate-200 text-[10px] text-slate-600 font-medium transition">
+                                Fit
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Comparison Containers -->
+                <div class="flex-1 flex flex-col xl:flex-row gap-4 items-center justify-center bg-slate-50 rounded-lg p-4 overflow-hidden relative min-h-[300px] border border-slate-100">
+                    
+                    <!-- Original Preview -->
+                    <div class="flex flex-col items-center gap-1.5 w-full xl:w-1/2">
+                        <div class="flex items-center justify-between w-full px-1">
+                            <span class="text-[10px] text-slate-500 uppercase tracking-wider font-semibold">Original</span>
+                            <span id="orig-size-lbl" class="text-[10px] mono text-slate-400">-</span>
+                        </div>
+                        <div class="w-full aspect-[4/3] rounded border border-slate-200 pixel-bg flex items-center justify-center overflow-auto relative max-h-[300px] xl:max-h-[350px]">
+                            <img id="orig-preview" class="max-w-full max-h-full object-contain hidden" style="image-rendering: pixelated; image-rendering: crisp-edges;" alt="Original Upload">
+                            <div id="orig-placeholder" class="text-slate-400 text-xs flex flex-col items-center gap-1">
+                                <i data-lucide="image-plus" class="w-8 h-8"></i>
+                                <span>No Image</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- DS Preview with Pixel-Perfect rendering -->
+                    <div class="flex flex-col items-center gap-1.5 w-full xl:w-1/2">
+                        <div class="flex items-center justify-between w-full px-1">
+                            <span class="text-[10px] text-blue-600 uppercase tracking-wider font-semibold">DS Preview</span>
+                            <span id="ds-size-lbl" class="text-[10px] mono text-slate-400">-</span>
+                        </div>
+                        <div class="w-full aspect-[4/3] rounded border border-blue-200/60 pixel-bg flex items-center justify-center overflow-auto relative max-h-[300px] xl:max-h-[350px]">
+                            <canvas id="ds-canvas" class="object-contain shadow-md hidden" style="image-rendering: pixelated; image-rendering: crisp-edges;"></canvas>
+                            <div id="ds-placeholder" class="text-slate-400 text-xs flex flex-col items-center gap-1">
+                                <i data-lucide="cpu" class="w-8 h-8"></i>
+                                <span>Awaiting processing</span>
+                            </div>
+                        </div>
+                    </div>
+
+                </div>
+
+                <!-- Action Buttons & Downloads -->
+                <div class="mt-4 flex flex-wrap gap-2 justify-end">
+                    <div id="conversion-progress" class="hidden w-full bg-slate-100 rounded-full h-2 mb-2 overflow-hidden border border-slate-200">
+                        <div id="progress-bar-fill" class="bg-gradient-to-r from-blue-500 to-sky-400 h-full w-0 transition-all duration-150"></div>
+                    </div>
+
+                    <button id="btn-download-palette" class="hidden py-2 px-3.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-200 text-xs font-semibold flex items-center gap-1.5 transition">
+                        <i data-lucide="download" class="w-4 h-4"></i> Save Palette (.gpf)
+                    </button>
+                    <button id="btn-export-png" class="py-2 px-4 rounded-lg bg-blue-600 hover:bg-blue-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-blue-500/15">
+                        <i data-lucide="save" class="w-4 h-4"></i> Export DS PNG
+                    </button>
+                    
+                    <!-- Spritesheet Exporter -->
+                    <button id="btn-export-spritesheet" class="hidden py-2 px-4 rounded-lg bg-gradient-to-r from-blue-600 to-sky-600 hover:from-blue-500 hover:to-sky-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-blue-500/10">
+                        <i data-lucide="grid" class="w-4 h-4"></i> Export Spritesheet (.PNG)
+                    </button>
+                    
+                    <!-- ZIP Exporter -->
+                    <button id="btn-export-zip" class="hidden py-2 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white text-xs font-bold flex items-center gap-1.5 transition shadow-lg shadow-indigo-500/15">
+                        <i data-lucide="file-archive" class="w-4 h-4"></i> Export Sprite Frames (.ZIP)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Palette Inspection Grid -->
+            <div id="palette-card" class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm">
+                <div class="flex items-center justify-between border-b border-slate-100 pb-3 mb-4">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="palette" class="w-4.5 h-4.5 text-blue-600"></i>
+                        <div>
+                            <span class="font-semibold text-slate-700 text-sm">NDS System Palette</span>
+                            <p class="text-[10px] text-slate-400 mt-0.5">15-bit BGR555 colors displayed for DSGM & Grit formats</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span id="pal-count-badge" class="px-2 py-0.5 rounded bg-slate-50 border border-slate-200 text-[10px] text-slate-500 mono">0 / 0 Colors</span>
+                    </div>
+                </div>
+
+                <div id="swatches-grid" class="grid grid-cols-4 sm:grid-cols-8 md:grid-cols-12 xl:grid-cols-16 gap-2 max-h-[140px] overflow-y-auto pr-1">
+                    <p id="no-palette-txt" class="text-xs text-slate-400 col-span-full text-center py-4">No indexed color palette has been generated yet.</p>
+                </div>
+
+                <!-- Selected Color Detail Panel -->
+                <div id="color-detail-panel" class="hidden mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs">
+                    <div class="flex items-center gap-3">
+                        <div id="detail-color-swatch" class="w-10 h-10 rounded border border-slate-200 shadow-sm"></div>
+                        <div>
+                            <div class="flex items-center gap-2">
+                                <span class="font-semibold text-slate-700">Selected Color</span>
+                                <span id="detail-trans-tag" class="hidden px-1.5 py-0.2 bg-blue-50 text-blue-600 text-[9px] rounded font-medium border border-blue-100">TRANSPARENT INDEX #0</span>
+                            </div>
+                            <p class="text-[10px] text-slate-400" id="detail-color-idx">Index: -</p>
+                        </div>
+                    </div>
+                    <div class="flex flex-wrap items-center gap-4">
+                        <div>
+                            <span class="text-[10px] text-slate-400 uppercase block font-semibold">Standard HEX</span>
+                            <span class="mono text-slate-700" id="detail-hex">-</span>
+                        </div>
+                        <div>
+                            <span class="text-[10px] text-slate-400 uppercase block font-semibold">15-bit RGB (BGR555)</span>
+                            <span class="mono text-blue-600 font-bold" id="detail-bgr555">-</span>
+                        </div>
+                        <button onclick="copyDSColorHex()" class="p-2 bg-slate-100 hover:bg-slate-200 text-slate-600 rounded border border-slate-200 transition" title="Copy DS555 code">
+                            <i data-lucide="copy" class="w-4 h-4"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+        </section>
+
+    </main>
+
+    <!-- Toast Notification System -->
+    <div id="toast-container" class="fixed bottom-5 right-5 z-[100] flex flex-col gap-2 max-w-sm w-full"></div>
+
+    <!-- Engine Script -->
+    <script>
+        // JS-based LZW and GIF Decoder (100% Offline)
+        const GIFDecoder = {
+            parse: function(arrayBuffer) {
+                const bytes = new Uint8Array(arrayBuffer);
+                let pos = 0;
+                
+                const signature = String.fromCharCode(bytes[0], bytes[1], bytes[2]);
+                if (signature !== 'GIF') {
+                    throw new Error("The selected file is not a valid GIF file.");
+                }
+                pos += 6;
+                
+                const width = bytes[pos] | (bytes[pos+1] << 8);
+                const height = bytes[pos+2] | (bytes[pos+3] << 8);
+                const packed = bytes[pos+4];
+                const hasGCT = (packed & 0x80) !== 0;
+                const gctSize = 1 << ((packed & 0x07) + 1);
+                pos += 7;
+                
+                let gct = null;
+                if (hasGCT) {
+                    gct = bytes.slice(pos, pos + gctSize * 3);
+                    pos += gctSize * 3;
+                }
+                
+                const frames = [];
+                let gce = null;
+                
+                while (pos < bytes.length) {
+                    const blockType = bytes[pos++];
+                    if (blockType === 0x3B) {
+                        break;
+                    } else if (blockType === 0x21) {
+                        const extType = bytes[pos++];
+                        if (extType === 0xF9) {
+                            const size = bytes[pos++];
+                            const extPacked = bytes[pos];
+                            const delay = (bytes[pos+1] | (bytes[pos+2] << 8)) * 10;
+                            const transIndex = bytes[pos+3];
+                            const hasTrans = (extPacked & 0x01) !== 0;
+                            gce = { delay: delay || 100, transIndex, hasTrans };
+                            pos += size + 1;
+                        } else {
+                            let blockSize = bytes[pos++];
+                            while (blockSize > 0) {
+                                pos += blockSize;
+                                if (pos >= bytes.length) break;
+                                blockSize = bytes[pos++];
+                            }
+                        }
+                    } else if (blockType === 0x2C) {
+                        const left = bytes[pos] | (bytes[pos+1] << 8);
+                        const top = bytes[pos+2] | (bytes[pos+3] << 8);
+                        const frameWidth = bytes[pos+4] | (bytes[pos+5] << 8);
+                        const frameHeight = bytes[pos+6] | (bytes[pos+7] << 8);
+                        const framePacked = bytes[pos+8];
+                        pos += 9;
+                        
+                        const hasLCT = (framePacked & 0x80) !== 0;
+                        const lctSize = 1 << ((framePacked & 0x07) + 1);
+                        
+                        let lct = null;
+                        if (hasLCT) {
+                            lct = bytes.slice(pos, pos + lctSize * 3);
+                            pos += lctSize * 3;
+                        }
+                        
+                        const lzwMinCodeSize = bytes[pos++];
+                        let lzwData = [];
+                        let blockSize = bytes[pos++];
+                        while (blockSize > 0) {
+                            for (let i = 0; i < blockSize; i++) {
+                                lzwData.push(bytes[pos + i]);
+                            }
+                            pos += blockSize;
+                            blockSize = bytes[pos++];
+                        }
+                        
+                        const pixels = this.decompressLZW(lzwData, lzwMinCodeSize, frameWidth * frameHeight);
+                        frames.push({
+                            left, top, width: frameWidth, height: frameHeight,
+                            pixels, palette: lct || gct, gce
+                        });
+                        gce = null;
+                    }
+                }
+                return { width, height, frames };
+            },
+
+            decompressLZW: function(data, minCodeSize, pixelCount) {
+                const clearCode = 1 << minCodeSize;
+                const endCode = clearCode + 1;
+                let codeSize = minCodeSize + 1;
+                let codeMask = (1 << codeSize) - 1;
+                
+                const prefix = new Int32Array(4096);
+                const suffix = new Uint8Array(4096);
+                const stack = new Uint8Array(4097);
+                let stackPtr = 0;
+                
+                for (let i = 0; i < clearCode; i++) {
+                    prefix[i] = -1;
+                    suffix[i] = i;
+                }
+                
+                let dictSize = clearCode + 2;
+                let oldCode = -1;
+                let firstChar = 0;
+                
+                let bitBuf = 0;
+                let bitCount = 0;
+                let dataPtr = 0;
+                let outPtr = 0;
+                const output = new Uint8Array(pixelCount);
+                
+                while (outPtr < pixelCount) {
+                    while (bitCount < codeSize) {
+                        if (dataPtr >= data.length) break;
+                        bitBuf |= data[dataPtr++] << bitCount;
+                        bitCount += 8;
+                    }
+                    if (bitCount < codeSize) break;
+                    
+                    let code = bitBuf & codeMask;
+                    bitBuf >>= codeSize;
+                    bitCount -= codeSize;
+                    
+                    if (code === clearCode) {
+                        codeSize = minCodeSize + 1;
+                        codeMask = (1 << codeSize) - 1;
+                        dictSize = clearCode + 2;
+                        oldCode = -1;
+                        continue;
+                    }
+                    if (code === endCode) break;
+                    
+                    if (oldCode === -1) {
+                        output[outPtr++] = firstChar = suffix[code];
+                        oldCode = code;
+                        continue;
+                    }
+                    
+                    let codeIn = code;
+                    if (code >= dictSize) {
+                        stack[stackPtr++] = firstChar;
+                        code = oldCode;
+                    }
+                    
+                    while (code >= clearCode) {
+                        stack[stackPtr++] = suffix[code];
+                        code = prefix[code];
+                    }
+                    
+                    firstChar = suffix[code];
+                    stack[stackPtr++] = firstChar;
+                    
+                    while (stackPtr > 0) {
+                        output[outPtr++] = stack[--stackPtr];
+                    }
+                    
+                    if (dictSize < 4096) {
+                        prefix[dictSize] = oldCode;
+                        suffix[dictSize] = firstChar;
+                        dictSize++;
+                        if (dictSize > codeMask && codeSize < 12) {
+                            codeSize++;
+                            codeMask = (1 << codeSize) - 1;
+                        }
+                    }
+                    oldCode = codeIn;
+                }
+                return output;
+            }
+        };
+
+        // State Machine and Globals
+        let activeFile = null;
+        let isSpriteMode = false;
+        let selectedHeight = 192;
+        let selectedResolution = "256x192";
+        let scalingMethod = "supersample"; // "supersample" | "nearest"
+        let currentDithering = "none"; // "none" | "bayer" | "fs"
+        
+        // GIF specific state
+        let isGif = false;
+        let gifData = null;
+        let gifFramesData = []; // Pre-rendered canvas elements
+        let gifInterval = null;
+        let currentGifFrame = 0;
+        let isGifPlaying = false;
+
+        // Custom Vector State
+        let isSvg = false;
+        let svgString = "";
+
+        // UI View Zooming State
+        let zoomScale = 1.0;
+
+        // Color and Palette variables
+        let dsPalette = [];
+        let indexedImageData = null;
+        let selectedPaletteIndex = null;
+
+        // DS Resolutions presets definitions
+        const bgResolutions = [
+            { id: "256x192", name: "256 x 192 (Default Screen)", w: 256, h: 192 },
+            { id: "256x256", name: "256 x 256 (Small BG Map)", w: 256, h: 256 },
+            { id: "512x256", name: "512 x 256 (Wide BG Map)", w: 512, h: 256 },
+            { id: "256x512", name: "256 x 512 (Tall BG Map)", w: 256, h: 512 },
+            { id: "512x512", name: "512 x 512 (Large Scrolling BG)", w: 512, h: 512 }
+        ];
+
+        const spriteResolutions = [
+            { id: "8x8", name: "8 x 8 px", w: 8, h: 8 },
+            { id: "16x16", name: "16 x 16 px", w: 16, h: 16 },
+            { id: "32x32", name: "32 x 32 px (Standard)", w: 32, h: 32 },
+            { id: "64x64", name: "64 x 64 px (Large)", w: 64, h: 64 },
+            { id: "16x8", name: "16 x 8 px (Horizontal)", w: 16, h: 8 },
+            { id: "32x8", name: "32 x 8 px", w: 32, h: 8 },
+            { id: "32x16", name: "32 x 16 px", w: 32, h: 16 },
+            { id: "64x32", name: "64 x 32 px", w: 64, h: 32 },
+            { id: "8x16", name: "8 x 16 px (Vertical)", w: 8, h: 16 },
+            { id: "8x32", name: "8 x 32 px", w: 8, h: 32 },
+            { id: "16x32", name: "16 x 32 px", w: 16, h: 32 },
+            { id: "32x64", name: "32 x 64 px", w: 32, h: 64 }
+        ];
+
+        // Core UI DOM elements bindings
+        const dropzone = document.getElementById("dropzone");
+        const fileInput = document.getElementById("file-input");
+        const fileInfo = document.getElementById("file-info");
+        const infoFilename = document.getElementById("info-filename");
+        const infoDimensions = document.getElementById("info-dimensions");
+        const resolutionSelect = document.getElementById("resolution-select");
+        const btnModeBg = document.getElementById("btn-mode-bg");
+        const btnModeSprite = document.getElementById("btn-mode-sprite");
+        const bgHeightContainer = document.getElementById("bg-height-container");
+        const resInfoTag = document.getElementById("res-info-tag");
+        const gifInfoBadge = document.getElementById("gif-info-badge");
+        const gifFrameCount = document.getElementById("gif-frame-count");
+        const svgInfoBadge = document.getElementById("svg-info-badge");
+
+        const origPreview = document.getElementById("orig-preview");
+        const origPlaceholder = document.getElementById("orig-placeholder");
+        const dsCanvas = document.getElementById("ds-canvas");
+        const dsPlaceholder = document.getElementById("ds-placeholder");
+
+        const origSizeLbl = document.getElementById("orig-size-lbl");
+        const dsSizeLbl = document.getElementById("ds-size-lbl");
+
+        const btnExportPng = document.getElementById("btn-export-png");
+        const btnExportSpritesheet = document.getElementById("btn-export-spritesheet");
+        const btnExportZip = document.getElementById("btn-export-zip");
+        const btnDownloadPalette = document.getElementById("btn-download-palette");
+
+        const gifPlayerControls = document.getElementById("gif-player-controls");
+        const btnGifPrev = document.getElementById("btn-gif-prev");
+        const btnGifPlay = document.getElementById("btn-gif-play");
+        const btnGifNext = document.getElementById("btn-gif-next");
+        const gifFrameIndicator = document.getElementById("gif-frame-indicator");
+
+        // Palette Swatches references
+        const swatchesGrid = document.getElementById("swatches-grid");
+        const palCountBadge = document.getElementById("pal-count-badge");
+        const noPaletteTxt = document.getElementById("no-palette-txt");
+        const colorDetailPanel = document.getElementById("color-detail-panel");
+        const detailColorSwatch = document.getElementById("detail-color-swatch");
+        const detailColorIdx = document.getElementById("detail-color-idx");
+        const detailHex = document.getElementById("detail-hex");
+        const detailBgr555 = document.getElementById("detail-bgr555");
+        const detailTransTag = document.getElementById("detail-trans-tag");
+
+        // Initialization
+        window.addEventListener('DOMContentLoaded', () => {
+            lucide.createIcons();
+            populateResolutions();
+            setupDragAndDrop();
+            setupEventListeners();
+        });
+
+        // Populate Resolutions dynamically based on active mode
+        function populateResolutions() {
+            resolutionSelect.innerHTML = "";
+            const currentList = isSpriteMode ? spriteResolutions : bgResolutions;
+            
+            currentList.forEach(res => {
+                const opt = document.createElement("option");
+                opt.value = res.id;
+                opt.textContent = `${res.name}`;
+                resolutionSelect.appendChild(opt);
+            });
+            
+            selectedResolution = resolutionSelect.value;
+            resInfoTag.textContent = isSpriteMode ? "Sprites" : "DS Background";
+        }
+
+        // Toggle BG Mode
+        btnModeBg.addEventListener('click', () => {
+            if (!isSpriteMode) return;
+            isSpriteMode = false;
+            
+            // UI Toggle States
+            btnModeBg.className = "py-1.5 px-3 rounded-md text-xs font-medium transition flex items-center justify-center gap-1.5 bg-blue-600 text-white shadow-md";
+            btnModeSprite.className = "py-1.5 px-3 rounded-md text-xs font-medium transition flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-700";
+            bgHeightContainer.classList.remove("hidden");
+            
+            populateResolutions();
+            handleConversionFlow();
+        });
+
+        // Toggle Sprite Mode
+        btnModeSprite.addEventListener('click', () => {
+            if (isSpriteMode) return;
+            isSpriteMode = true;
+            
+            // UI Toggle States
+            btnModeSprite.className = "py-1.5 px-3 rounded-md text-xs font-medium transition flex items-center justify-center gap-1.5 bg-blue-600 text-white shadow-md";
+            btnModeBg.className = "py-1.5 px-3 rounded-md text-xs font-medium transition flex items-center justify-center gap-1.5 text-slate-500 hover:text-slate-700";
+            bgHeightContainer.classList.add("hidden");
+            
+            populateResolutions();
+            handleConversionFlow();
+        });
+
+        // Background Height Preset handlers
+        function setBgHeight(h) {
+            selectedHeight = h;
+            document.querySelectorAll("#bg-height-container button").forEach(btn => {
+                btn.className = "py-1 px-1.5 rounded text-[10px] font-medium transition text-slate-500 hover:text-slate-700";
+            });
+            const activeBtn = document.getElementById(`height-${h}`);
+            if (activeBtn) {
+                activeBtn.className = "py-1 px-1.5 rounded text-[10px] font-medium transition bg-white text-blue-600 border border-slate-200/60 shadow-sm";
+            }
+            showToast(`Target Height set to ${h}px`);
+            handleConversionFlow();
+        }
+
+        // Setup Scaling Algorithm Mode selection
+        function setScalingMethod(method) {
+            scalingMethod = method;
+            document.querySelectorAll("#scale-supersample, #scale-nearest").forEach(btn => {
+                btn.className = "py-1 px-1 text-[10px] font-medium rounded transition text-slate-500 hover:text-slate-700";
+            });
+            const activeBtn = document.getElementById(`scale-${method}`);
+            if (activeBtn) activeBtn.className = "py-1 px-1 text-[10px] font-medium rounded transition bg-white text-blue-600 border border-slate-200/60 shadow-sm";
+            handleConversionFlow();
+        }
+
+        // Setup Shading/Dithering Engine Mode selection
+        function setDithering(mode) {
+            currentDithering = mode;
+            document.querySelectorAll("#dither-none, #dither-bayer, #dither-fs").forEach(btn => {
+                btn.className = "py-1 px-1.5 rounded text-[10px] font-medium transition text-slate-500 hover:text-slate-700";
+            });
+            const activeBtn = document.getElementById(`dither-${mode}`);
+            if (activeBtn) activeBtn.className = "py-1 px-1.5 rounded text-[10px] font-medium transition bg-white text-blue-600 border border-slate-200/60 shadow-sm";
+            handleConversionFlow();
+        }
+
+        // Setup Scaling Algorithm Mode selection
+        function setScalingMethod(method) {
+            scalingMethod = method;
+            document.querySelectorAll("#scale-supersample, #scale-nearest").forEach(btn => {
+                btn.className = "py-1 px-1 text-[10px] font-medium rounded transition text-slate-400 hover:text-slate-200";
+            });
+            const activeBtn = document.getElementById(`scale-${method}`);
+            if (activeBtn) activeBtn.className = "py-1 px-1 text-[10px] font-medium rounded transition bg-slate-800 text-emerald-400";
+            handleConversionFlow();
+        }
+
+        // Setup Shading/Dithering Engine Mode selection
+        function setDithering(mode) {
+            currentDithering = mode;
+            document.querySelectorAll("#dither-none, #dither-bayer, #dither-fs").forEach(btn => {
+                btn.className = "py-1 px-1.5 rounded text-[10px] font-medium transition text-slate-400 hover:text-slate-200";
+            });
+            const activeBtn = document.getElementById(`dither-${mode}`);
+            if (activeBtn) activeBtn.className = "py-1 px-1.5 rounded text-[10px] font-medium transition bg-slate-800 text-emerald-400";
+            handleConversionFlow();
+        }
+
+        // Setup Drag and Drop Mechanics
+        function setupDragAndDrop() {
+            ["dragenter", "dragover"].forEach(eventName => {
+                dropzone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropzone.classList.add("border-emerald-500", "bg-slate-950/80");
+                }, false);
+            });
+
+            ["dragleave", "drop"].forEach(eventName => {
+                dropzone.addEventListener(eventName, (e) => {
+                    e.preventDefault();
+                    dropzone.classList.remove("border-emerald-500", "bg-slate-950/80");
+                }, false);
+            });
+
+            dropzone.addEventListener("drop", (e) => {
+                const dt = e.dataTransfer;
+                const files = dt.files;
+                if (files.length > 0) {
+                    processInputFile(files[0]);
+                }
+            });
+
+            fileInput.addEventListener("change", (e) => {
+                if (e.target.files.length > 0) {
+                    processInputFile(e.target.files[0]);
+                }
+            });
+        }
+
+        // Processing Loaded Files (Routing SVG, GIF, Raster Formats)
+        function processInputFile(file) {
+            activeFile = file;
+            isGif = file.type === "image/gif";
+            isSvg = file.name.endsWith(".svg") || file.type === "image/svg+xml";
+
+            infoFilename.textContent = file.name;
+            fileInfo.classList.remove("hidden");
+            
+            // Clean up old active GIF interval routines
+            cleanupGifPlayback();
+
+            if (isSvg) {
+                gifInfoBadge.classList.add("hidden");
+                svgInfoBadge.classList.remove("hidden");
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    svgString = event.target.result;
+                    displaySvgOriginal();
+                };
+                reader.readAsText(file);
+            } else if (isGif) {
+                svgInfoBadge.classList.add("hidden");
+                gifInfoBadge.classList.remove("hidden");
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    try {
+                        gifData = GIFDecoder.parse(event.target.result);
+                        gifFrameCount.textContent = gifData.frames.length;
+                        infoDimensions.textContent = `${gifData.width}x${gifData.height}`;
+                        origSizeLbl.textContent = `${gifData.width}x${gifData.height}`;
+                        
+                        // Populate Original Preview Frame
+                        origPlaceholder.classList.add("hidden");
+                        origPreview.classList.remove("hidden");
+                        
+                        // Extract frames to independent canvases
+                        renderGifOriginalFrames();
+                        handleConversionFlow();
+                    } catch (e) {
+                        showToast(`GIF Parser Error: ${e.message}`, "error");
+                        console.error(e);
+                    }
+                };
+                reader.readAsArrayBuffer(file);
+            } else {
+                gifInfoBadge.classList.add("hidden");
+                svgInfoBadge.classList.add("hidden");
+                const reader = new FileReader();
+                reader.onload = function(event) {
+                    origPlaceholder.classList.add("hidden");
+                    origPreview.classList.remove("hidden");
+                    origPreview.src = event.target.result;
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+
+        // SVG Render Engine to Original Viewport
+        function displaySvgOriginal() {
+            const blob = new Blob([svgString], { type: 'image/svg+xml;charset=utf-8' });
+            const url = URL.createObjectURL(blob);
+            origPlaceholder.classList.add("hidden");
+            origPreview.classList.remove("hidden");
+            origPreview.onload = function() {
+                infoDimensions.textContent = `${origPreview.naturalWidth}x${origPreview.naturalHeight} (SVG)`;
+                origSizeLbl.textContent = `${origPreview.naturalWidth}x${origPreview.naturalHeight}`;
+                handleConversionFlow();
+                URL.revokeObjectURL(url);
+            };
+            origPreview.src = url;
+        }
+
+        // Standard Raster Image Loaded Event
+        origPreview.addEventListener('load', () => {
+            if (isGif || isSvg) return;
+            infoDimensions.textContent = `${origPreview.naturalWidth}x${origPreview.naturalHeight}`;
+            origSizeLbl.textContent = `${origPreview.naturalWidth}x${origPreview.naturalHeight}`;
+            handleConversionFlow();
+        });
+
+        // GIF frames decomposer implementation
+        let rawGifCanvases = [];
+        function renderGifOriginalFrames() {
+            rawGifCanvases = [];
+            const tempCanvas = document.createElement("canvas");
+            tempCanvas.width = gifData.width;
+            tempCanvas.height = gifData.height;
+            const tempCtx = tempCanvas.getContext("2d");
+
+            gifData.frames.forEach((f, idx) => {
+                const fCanvas = document.createElement("canvas");
+                fCanvas.width = gifData.width;
+                fCanvas.height = gifData.height;
+                const fCtx = fCanvas.getContext("2d");
+
+                // Decode GIF frame indices onto ImageData
+                const fData = fCtx.createImageData(f.width, f.height);
+                const hasLocalPalette = f.palette && f.palette.length > 0;
+                const palette = f.palette;
+                const gce = f.gce;
+                const transIdx = gce ? gce.transIndex : -1;
+                const hasTrans = gce ? gce.hasTrans : false;
+
+                for (let i = 0; i < f.pixels.length; i++) {
+                    const idxColor = f.pixels[i];
+                    const outIdx = i * 4;
+
+                    if (hasTrans && idxColor === transIdx) {
+                        fData.data[outIdx] = 0;
+                        fData.data[outIdx+1] = 0;
+                        fData.data[outIdx+2] = 0;
+                        fData.data[outIdx+3] = 0;
+                    } else {
+                        const palIdx = idxColor * 3;
+                        fData.data[outIdx] = palette[palIdx];
+                        fData.data[outIdx+1] = palette[palIdx+1];
+                        fData.data[outIdx+2] = palette[palIdx+2];
+                        fData.data[outIdx+3] = 255;
+                    }
+                }
+
+                // Render onto temporary virtual frame stack
+                const partialCanvas = document.createElement("canvas");
+                partialCanvas.width = f.width;
+                partialCanvas.height = f.height;
+                partialCanvas.getContext("2d").putImageData(fData, 0, 0);
+
+                // Cumulative composite frame logic (Disposal Mode)
+                fCtx.drawImage(tempCanvas, 0, 0);
+                fCtx.drawImage(partialCanvas, f.left, f.top);
+                
+                rawGifCanvases.push(fCanvas);
+                
+                // Draw next base background structure update
+                tempCtx.drawImage(fCanvas, 0, 0);
+            });
+
+            // Put frame index 0 as standard original reference layout
+            if (rawGifCanvases.length > 0) {
+                origPreview.src = rawGifCanvases[0].toDataURL();
+            }
+        }
+
+        // Setup Action Event Listeners
+        function setupEventListeners() {
+            resolutionSelect.addEventListener('change', (e) => {
+                selectedResolution = e.target.value;
+                handleConversionFlow();
+            });
+
+            document.getElementById("transparent-color-picker").addEventListener('input', (e) => {
+                document.getElementById("trans-color-hex").textContent = e.target.value.toUpperCase();
+                handleConversionFlow();
+            });
+
+            document.getElementById("transparency-chk").addEventListener('change', () => {
+                handleConversionFlow();
+            });
+
+            document.getElementById("force-solid-chk").addEventListener('change', () => {
+                handleConversionFlow();
+            });
+
+            document.getElementById("autocrop-chk").addEventListener('change', () => {
+                handleConversionFlow();
+            });
+
+            document.getElementById("color-mode-select").addEventListener('change', () => {
+                handleConversionFlow();
+            });
+
+            document.getElementById("alpha-threshold-slider").addEventListener('input', (e) => {
+                const percent = Math.round((e.target.value / 255) * 100);
+                document.getElementById("alpha-threshold-val").textContent = `${e.target.value} (${percent}%)`;
+                handleConversionFlow();
+            });
+
+            document.getElementById("btn-preset-magenta").addEventListener('click', () => {
+                document.getElementById("transparent-color-picker").value = "#FF00FF";
+                document.getElementById("trans-color-hex").textContent = "#FF00FF";
+                handleConversionFlow();
+            });
+
+            document.getElementById("btn-preset-black").addEventListener('click', () => {
+                document.getElementById("transparent-color-picker").value = "#000000";
+                document.getElementById("trans-color-hex").textContent = "#000000";
+                handleConversionFlow();
+            });
+
+            // Action exports routing
+            btnExportPng.addEventListener('click', () => {
+                exportSingleFramePng();
+            });
+
+            btnExportSpritesheet.addEventListener('click', () => {
+                exportSpritesheetPng();
+            });
+
+            btnExportZip.addEventListener('click', () => {
+                exportFramesZip();
+            });
+
+            btnDownloadPalette.addEventListener('click', () => {
+                exportGritPalette();
+            });
+
+            // Zooming Operations
+            document.getElementById("zoom-in").addEventListener('click', () => {
+                if (zoomScale < 8.0) {
+                    zoomScale += 0.25;
+                    updateZoomDisplay();
+                }
+            });
+
+            document.getElementById("zoom-out").addEventListener('click', () => {
+                if (zoomScale > 0.25) {
+                    zoomScale -= 0.25;
+                    updateZoomDisplay();
+                }
+            });
+
+            document.getElementById("zoom-reset").addEventListener('click', () => {
+                zoomScale = 1.0;
+                updateZoomDisplay();
+            });
+
+            // GIF Control bindings
+            btnGifPrev.addEventListener('click', () => navigateGifFrame(-1));
+            btnGifNext.addEventListener('click', () => navigateGifFrame(1));
+            btnGifPlay.addEventListener('click', () => toggleGifPlayState());
+        }
+
+        // Apply visual zoom transformations on view canvases
+        function updateZoomDisplay() {
+            document.getElementById("zoom-level").textContent = `${Math.round(zoomScale * 100)}%`;
+            origPreview.style.transform = `scale(${zoomScale})`;
+            dsCanvas.style.transform = `scale(${zoomScale})`;
+        }
+
+        // Clear active GIF playback routines
+        function cleanupGifPlayback() {
+            isGifPlaying = false;
+            if (gifInterval) {
+                clearInterval(gifInterval);
+                gifInterval = null;
+            }
+            gifPlayerControls.classList.add("hidden");
+            btnExportSpritesheet.classList.add("hidden");
+            btnExportZip.classList.add("hidden");
+        }
+
+        // MAIN FLOW: Process, Quantize, and Render Output Image assets
+        function handleConversionFlow() {
+            if (!activeFile) return;
+
+            // Display loading progress indicator
+            const progress = document.getElementById("conversion-progress");
+            const bar = document.getElementById("progress-bar-fill");
+            progress.classList.remove("hidden");
+            bar.style.width = "20%";
+
+            setTimeout(() => {
+                bar.style.width = "60%";
+                
+                try {
+                    // 1. Establish Output Bounds (Dimensions w, h)
+                    let targetW = 256;
+                    let targetH = 192;
+
+                    if (isSpriteMode) {
+                        const resObj = spriteResolutions.find(r => r.id === selectedResolution);
+                        targetW = resObj ? resObj.w : 32;
+                        targetH = resObj ? resObj.h : 32;
+                    } else {
+                        const resObj = bgResolutions.find(r => r.id === selectedResolution);
+                        targetW = resObj ? resObj.w : 256;
+                        targetH = selectedHeight;
+                    }
+
+                    dsSizeLbl.textContent = `${targetW}x${targetH}`;
+                    dsCanvas.width = targetW;
+                    dsCanvas.height = targetH;
+
+                    dsPlaceholder.classList.add("hidden");
+                    dsCanvas.classList.remove("hidden");
+
+                    // Clear prior active visual states
+                    cleanupPaletteSwatches();
+
+                    if (isGif && gifData) {
+                        gifPlayerControls.classList.remove("hidden");
+                        btnExportSpritesheet.classList.remove("hidden");
+                        btnExportZip.classList.remove("hidden");
+                        
+                        // Render and process each frames
+                        processAnimatedGifFrames(targetW, targetH);
+                    } else {
+                        // Single frame processing (Raster / SVG Vector format)
+                        processSingleImage(targetW, targetH);
+                    }
+                    
+                    bar.style.width = "100%";
+                    setTimeout(() => progress.classList.add("hidden"), 300);
+                } catch (e) {
+                    showToast(`Quantizer error: ${e.message}`, "error");
+                    progress.classList.add("hidden");
+                }
+            }, 50);
+        }
+
+        // Single Image Frame Pipeline
+        function processSingleImage(targetW, targetH) {
+            const ctx = dsCanvas.getContext("2d");
+            
+            // Render scaling to target bounds
+            const rawCanvas = document.createElement("canvas");
+            rawCanvas.width = targetW;
+            rawCanvas.height = targetH;
+            const rawCtx = rawCanvas.getContext("2d");
+
+            if (scalingMethod === "nearest") {
+                rawCtx.imageSmoothingEnabled = false;
+                rawCtx.drawImage(origPreview, 0, 0, targetW, targetH);
+            } else {
+                // High-fidelity Super-Sampling / Bilinear resizing logic
+                rawCtx.imageSmoothingEnabled = true;
+                rawCtx.imageSmoothingQuality = 'high';
+                rawCtx.drawImage(origPreview, 0, 0, targetW, targetH);
+            }
+
+            const imgData = rawCtx.getImageData(0, 0, targetW, targetH);
+            
+            // Apply Transparency Key, Color Quantization, and Dithering pipelines
+            const processedData = applyDsOptimization(imgData);
+            
+            ctx.putImageData(processedData, 0, 0);
+            updatePaletteSwatches();
+        }
+
+        // GIF Frames Conversion processing pipeline
+        function processAnimatedGifFrames(targetW, targetH) {
+            gifFramesData = [];
+            
+            // Run Smart Autocrop Bounds Calculation if active
+            let cropBox = null;
+            const doAutocrop = document.getElementById("autocrop-chk").checked;
+            if (doAutocrop && rawGifCanvases.length > 0) {
+                cropBox = calculateOptimalAutocrop(rawGifCanvases);
+            }
+
+            rawGifCanvases.forEach((origCanvas, idx) => {
+                const tempCanvas = document.createElement("canvas");
+                tempCanvas.width = targetW;
+                tempCanvas.height = targetH;
+                const tempCtx = tempCanvas.getContext("2d");
+
+                if (scalingMethod === "nearest") {
+                    tempCtx.imageSmoothingEnabled = false;
+                } else {
+                    tempCtx.imageSmoothingEnabled = true;
+                    tempCtx.imageSmoothingQuality = 'high';
+                }
+
+                if (cropBox) {
+                    // Render using cropped boundaries
+                    tempCtx.drawImage(origCanvas, cropBox.x, cropBox.y, cropBox.w, cropBox.h, 0, 0, targetW, targetH);
+                } else {
+                    tempCtx.drawImage(origCanvas, 0, 0, targetW, targetH);
+                }
+
+                const imgData = tempCtx.getImageData(0, 0, targetW, targetH);
+                const processed = applyDsOptimization(imgData);
+                
+                const finalFrameCanvas = document.createElement("canvas");
+                finalFrameCanvas.width = targetW;
+                finalFrameCanvas.height = targetH;
+                finalFrameCanvas.getContext("2d").putImageData(processed, 0, 0);
+
+                gifFramesData.push({
+                    canvas: finalFrameCanvas,
+                    delay: gifData.frames[idx].gce ? gifData.frames[idx].gce.delay : 100
+                });
+            });
+
+            // Start playing converted animation
+            currentGifFrame = 0;
+            isGifPlaying = true;
+            runGifPlaybackLoop();
+        }
+
+        // Smart crop algorithm calculations
+        function calculateOptimalAutocrop(canvasList) {
+            let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+            const threshold = parseInt(document.getElementById("alpha-threshold-slider").value);
+
+            canvasList.forEach(canvas => {
+                const ctx = canvas.getContext("2d");
+                const imgData = ctx.getImageData(0, 0, canvas.width, canvas.height);
+                const data = imgData.data;
+
+                for (let y = 0; y < canvas.height; y++) {
+                    for (let x = 0; x < canvas.width; x++) {
+                        const alpha = data[(y * canvas.width + x) * 4 + 3];
+                        if (alpha >= threshold) {
+                            if (x < minX) minX = x;
+                            if (y < minY) minY = y;
+                            if (x > maxX) maxX = x;
+                            if (y > maxY) maxY = y;
+                        }
+                    }
+                }
+            });
+
+            // Return full resolution boundaries if empty canvas detected
+            if (minX === Infinity) return { x: 0, y: 0, w: canvasList[0].width, h: canvasList[0].height };
+
+            // Apply slight safe margins bounds padding (1px)
+            minX = Math.max(0, minX - 1);
+            minY = Math.max(0, minY - 1);
+            maxX = Math.min(canvasList[0].width - 1, maxX + 1);
+            maxY = Math.min(canvasList[0].height - 1, maxY + 1);
+
+            return {
+                x: minX,
+                y: minY,
+                w: maxX - minX + 1,
+                h: maxY - minY + 1
+            };
+        }
+
+        // Animated GIF Viewport Loop
+        function runGifPlaybackLoop() {
+            if (gifInterval) clearInterval(gifInterval);
+            
+            const playFrame = () => {
+                if (gifFramesData.length === 0) return;
+                
+                const frameObj = gifFramesData[currentGifFrame];
+                const ctx = dsCanvas.getContext("2d");
+                
+                ctx.clearRect(0, 0, dsCanvas.width, dsCanvas.height);
+                ctx.drawImage(frameObj.canvas, 0, 0);
+
+                gifFrameIndicator.textContent = `F: ${currentGifFrame + 1}/${gifFramesData.length}`;
+                
+                // Toggle active visual indicator icons
+                const playIcon = btnGifPlay.querySelector("i");
+                if (playIcon) {
+                    playIcon.setAttribute("data-lucide", isGifPlaying ? "pause" : "play");
+                    lucide.createIcons();
+                }
+
+                if (isGifPlaying) {
+                    currentGifFrame = (currentGifFrame + 1) % gifFramesData.length;
+                    gifInterval = setTimeout(playFrame, frameObj.delay);
+                }
+            };
+
+            playFrame();
+        }
+
+        function navigateGifFrame(dir) {
+            isGifPlaying = false;
+            if (gifInterval) clearTimeout(gifInterval);
+            
+            currentGifFrame = (currentGifFrame + dir + gifFramesData.length) % gifFramesData.length;
+            
+            const frameObj = gifFramesData[currentGifFrame];
+            const ctx = dsCanvas.getContext("2d");
+            ctx.clearRect(0, 0, dsCanvas.width, dsCanvas.height);
+            ctx.drawImage(frameObj.canvas, 0, 0);
+            
+            gifFrameIndicator.textContent = `F: ${currentGifFrame + 1}/${gifFramesData.length}`;
+            
+            const playIcon = btnGifPlay.querySelector("i");
+            if (playIcon) {
+                playIcon.setAttribute("data-lucide", "play");
+                lucide.createIcons();
+            }
+        }
+
+        function toggleGifPlayState() {
+            isGifPlaying = !isGifPlaying;
+            if (isGifPlaying) {
+                runGifPlaybackLoop();
+            } else {
+                if (gifInterval) clearTimeout(gifInterval);
+                const playIcon = btnGifPlay.querySelector("i");
+                if (playIcon) {
+                    playIcon.setAttribute("data-lucide", "play");
+                    lucide.createIcons();
+                }
+            }
+        }
+
+        // CORE COLOR PIPELINE: BGR555, Transparency, Quantization & Dithering Algorithms
+        function applyDsOptimization(imgData) {
+            const data = imgData.data;
+            const totalPixels = data.length / 4;
+            
+            const useTransparency = document.getElementById("transparency-chk").checked;
+            const forceSolidBackground = document.getElementById("force-solid-chk").checked;
+            const hexKey = document.getElementById("transparent-color-picker").value;
+            const keyColor = hexToRgb(hexKey);
+            const alphaThreshold = parseInt(document.getElementById("alpha-threshold-slider").value);
+
+            // DS Mode: 15-bit BGR555 downscaling mapping
+            const mapToBGR555 = (r, g, b) => {
+                const r5 = Math.round((r / 255) * 31);
+                const g5 = Math.round((g / 255) * 31);
+                const b5 = Math.round((b / 255) * 31);
+                
+                // Reconstruct full 24-bit representation
+                return {
+                    r: Math.round((r5 / 31) * 255),
+                    g: Math.round((g5 / 31) * 255),
+                    b: Math.round((b5 / 31) * 255),
+                    raw555: (b5 << 10) | (g5 << 5) | r5
+                };
+            };
+
+            // Pre-process alpha masks and translate to BGR555
+            const pixelsBGR = [];
+            const isTransparent = new Uint8Array(totalPixels);
+
+            for (let i = 0; i < totalPixels; i++) {
+                const idx = i * 4;
+                const r = data[idx];
+                const g = data[idx+1];
+                const b = data[idx+2];
+                const a = data[idx+3];
+
+                if (useTransparency && a < alphaThreshold) {
+                    isTransparent[i] = 1;
+                    pixelsBGR.push(keyColor); // Force Transparent RGB key color directly
+                } else {
+                    const bgr = mapToBGR555(r, g, b);
+                    pixelsBGR.push(bgr);
+                }
+            }
+
+            // Route color modes processing (Indexed Palettes vs Direct color paths)
+            const palMode = document.getElementById("color-mode-select").value;
+            
+            if (palMode === "direct") {
+                // Non-indexed mode, apply standard RGB conversions directly
+                dsPalette = [];
+                for (let i = 0; i < totalPixels; i++) {
+                    const idx = i * 4;
+                    if (isTransparent[i]) {
+                        data[idx] = forceSolidBackground ? keyColor.r : 0;
+                        data[idx+1] = forceSolidBackground ? keyColor.g : 0;
+                        data[idx+2] = forceSolidBackground ? keyColor.b : 0;
+                        data[idx+3] = forceSolidBackground ? 255 : 0;
+                    } else {
+                        data[idx] = pixelsBGR[i].r;
+                        data[idx+1] = pixelsBGR[i].g;
+                        data[idx+2] = pixelsBGR[i].b;
+                        data[idx+3] = 255;
+                    }
+                }
+                return imgData;
+            }
+
+            // Quantize colors using Median Cut Color Quantization
+            const maxColors = palMode === "pal16" ? 16 : 256;
+            
+            // Gather valid solid pixels to build palette (excluding transparent areas)
+            const solidPixelsForPal = [];
+            for (let i = 0; i < totalPixels; i++) {
+                if (!isTransparent[i]) {
+                    solidPixelsForPal.push(pixelsBGR[i]);
+                }
+            }
+
+            // Generate Palette
+            let generatedPalette = [];
+            if (solidPixelsForPal.length > 0) {
+                generatedPalette = medianCutQuantize(solidPixelsForPal, useTransparency ? maxColors - 1 : maxColors);
+            }
+
+            // Build official NDS Palette (Inject Transparent key index to slot #0)
+            dsPalette = [];
+            if (useTransparency) {
+                dsPalette.push({
+                    r: keyColor.r,
+                    g: keyColor.g,
+                    b: keyColor.b,
+                    raw555: mapToBGR555(keyColor.r, keyColor.g, keyColor.b).raw555,
+                    isTrans: true
+                });
+            }
+
+            generatedPalette.forEach(col => {
+                dsPalette.push({
+                    r: col.r,
+                    g: col.g,
+                    b: col.b,
+                    raw555: col.raw555,
+                    isTrans: false
+                });
+            });
+
+            // Handle empty padding slots
+            while (dsPalette.length < maxColors) {
+                dsPalette.push({ r: 0, g: 0, b: 0, raw555: 0, isTrans: false });
+            }
+
+            // Enforce hard palette limit parameters
+            if (dsPalette.length > maxColors) {
+                dsPalette = dsPalette.slice(0, maxColors);
+            }
+
+            // Apply Paletted Color Mapping & Error Dithering Algorithms
+            if (currentDithering === "bayer") {
+                applyBayerDithering(data, pixelsBGR, isTransparent, dsPalette, imgData.width, imgData.height, useTransparency, forceSolidBackground, keyColor);
+            } else if (currentDithering === "fs") {
+                applyFloydSteinbergDithering(data, pixelsBGR, isTransparent, dsPalette, imgData.width, imgData.height, useTransparency, forceSolidBackground, keyColor);
+            } else {
+                // Nearest match mapping (No Dither)
+                for (let i = 0; i < totalPixels; i++) {
+                    const idx = i * 4;
+                    if (isTransparent[i]) {
+                        data[idx] = forceSolidBackground ? keyColor.r : 0;
+                        data[idx+1] = forceSolidBackground ? keyColor.g : 0;
+                        data[idx+2] = forceSolidBackground ? keyColor.b : 0;
+                        data[idx+3] = forceSolidBackground ? 255 : 0;
+                    } else {
+                        const targetColor = pixelsBGR[i];
+                        const bestMatch = findClosestPaletteColor(targetColor, dsPalette, useTransparency);
+                        data[idx] = bestMatch.r;
+                        data[idx+1] = bestMatch.g;
+                        data[idx+2] = bestMatch.b;
+                        data[idx+3] = 255;
+                    }
+                }
+            }
+
+            return imgData;
+        }
+
+        // BGR555-Space Color Quantizer (Median Cut)
+        function medianCutQuantize(pixels, maxColors) {
+            let boxes = [pixels];
+            
+            while (boxes.length < maxColors) {
+                // Find most populated split-eligible color box
+                let splitIdx = -1;
+                let maxLen = -1;
+                for (let i = 0; i < boxes.length; i++) {
+                    if (boxes[i].length > maxLen && boxes[i].length > 1) {
+                        maxLen = boxes[i].length;
+                        splitIdx = i;
+                    }
+                }
+
+                if (splitIdx === -1) break; // All slots isolated
+
+                const boxToSplit = boxes.splice(splitIdx, 1)[0];
+                
+                // Determine channel bounds dimensions
+                let minR = 255, maxR = 0;
+                let minG = 255, maxG = 0;
+                let minB = 255, maxB = 0;
+
+                boxToSplit.forEach(p => {
+                    if (p.r < minR) minR = p.r; if (p.r > maxR) maxR = p.r;
+                    if (p.g < minG) minG = p.g; if (p.g > maxG) maxG = p.g;
+                    if (p.b < minB) minB = p.b; if (p.b > maxB) maxB = p.b;
+                });
+
+                const rangeR = maxR - minR;
+                const rangeG = maxG - minG;
+                const rangeB = maxB - minB;
+
+                // Split box along the axis with the largest color range
+                let sortKey = 'g';
+                if (rangeR >= rangeG && rangeR >= rangeB) sortKey = 'r';
+                else if (rangeB >= rangeR && rangeB >= rangeG) sortKey = 'b';
+
+                boxToSplit.sort((a, b) => a[sortKey] - b[sortKey]);
+
+                const mid = Math.floor(boxToSplit.length / 2);
+                boxes.push(boxToSplit.slice(0, mid));
+                boxes.push(boxToSplit.slice(mid));
+            }
+
+            // Map each quantized box down to representative average color values
+            return boxes.map(box => {
+                let sumR = 0, sumG = 0, sumB = 0;
+                box.forEach(p => {
+                    sumR += p.r; sumG += p.g; sumB += p.b;
+                });
+                const count = box.length;
+                const avgR = Math.round(sumR / count);
+                const avgG = Math.round(sumG / count);
+                const avgB = Math.round(sumB / count);
+
+                // Ensure BGR555 conformity
+                const r5 = Math.round((avgR / 255) * 31);
+                const g5 = Math.round((avgG / 255) * 31);
+                const b5 = Math.round((avgB / 255) * 31);
+
+                return {
+                    r: Math.round((r5 / 31) * 255),
+                    g: Math.round((g5 / 31) * 255),
+                    b: Math.round((b5 / 31) * 255),
+                    raw555: (b5 << 10) | (g5 << 5) | r5
+                };
+            });
+        }
+
+        // Palette color distance calculation
+        function findClosestPaletteColor(pixel, palette, skipIndexZero = false) {
+            let bestMatch = palette[skipIndexZero ? 1 : 0];
+            let minDistance = Infinity;
+
+            // Loop and calculate Euclidean distance differences
+            const startIdx = skipIndexZero ? 1 : 0;
+            for (let i = startIdx; i < palette.length; i++) {
+                const color = palette[i];
+                const d = Math.pow(pixel.r - color.r, 2) + 
+                          Math.pow(pixel.g - color.g, 2) + 
+                          Math.pow(pixel.b - color.b, 2);
+                if (d < minDistance) {
+                    minDistance = d;
+                    bestMatch = color;
+                }
+            }
+            return bestMatch;
+        }
+
+        // Bayer 4x4 Dithering Engine
+        function applyBayerDithering(data, pixels, isTrans, palette, w, h, useTrans, forceSolid, keyColor) {
+            const bayerMatrix = [
+                [ 1,  9,  3, 11 ],
+                [13,  5, 15,  7 ],
+                [ 4, 12,  2, 10 ],
+                [16,  8, 14,  6 ]
+            ];
+
+            const spread = 24; // Dither dispersion coefficient (Spread)
+
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    const idx = (y * w + x);
+                    const pixelIdx = idx * 4;
+
+                    if (isTrans[idx]) {
+                        data[pixelIdx] = forceSolid ? keyColor.r : 0;
+                        data[pixelIdx+1] = forceSolid ? keyColor.g : 0;
+                        data[pixelIdx+2] = forceSolid ? keyColor.b : 0;
+                        data[pixelIdx+3] = forceSolid ? 255 : 0;
+                        continue;
+                    }
+
+                    const rawPix = pixels[idx];
+                    const matrixVal = bayerMatrix[y % 4][x % 4];
+                    const factor = (matrixVal / 17.0) - 0.5;
+
+                    const targetR = Math.min(255, Math.max(0, rawPix.r + factor * spread));
+                    const targetG = Math.min(255, Math.max(0, rawPix.g + factor * spread));
+                    const targetB = Math.min(255, Math.max(0, rawPix.b + factor * spread));
+
+                    const closest = findClosestPaletteColor({ r: targetR, g: targetG, b: targetB }, palette, useTrans);
+
+                    data[pixelIdx] = closest.r;
+                    data[pixelIdx+1] = closest.g;
+                    data[pixelIdx+2] = closest.b;
+                    data[pixelIdx+3] = 255;
+                }
+            }
+        }
+
+        // Floyd-Steinberg Dithering Engine
+        function applyFloydSteinbergDithering(data, pixels, isTrans, palette, w, h, useTrans, forceSolid, keyColor) {
+            // Setup RGB error buffers
+            const errR = new Float32Array(w * h);
+            const errG = new Float32Array(w * h);
+            const errB = new Float32Array(w * h);
+
+            for (let y = 0; y < h; y++) {
+                for (let x = 0; x < w; x++) {
+                    const idx = y * w + x;
+                    const pixelIdx = idx * 4;
+
+                    if (isTrans[idx]) {
+                        data[pixelIdx] = forceSolid ? keyColor.r : 0;
+                        data[pixelIdx+1] = forceSolid ? keyColor.g : 0;
+                        data[pixelIdx+2] = forceSolid ? keyColor.b : 0;
+                        data[pixelIdx+3] = forceSolid ? 255 : 0;
+                        continue;
+                    }
+
+                    const rawPix = pixels[idx];
+                    const targetR = Math.min(255, Math.max(0, rawPix.r + errR[idx]));
+                    const targetG = Math.min(255, Math.max(0, rawPix.g + errG[idx]));
+                    const targetB = Math.min(255, Math.max(0, rawPix.b + errB[idx]));
+
+                    const closest = findClosestPaletteColor({ r: targetR, g: targetG, b: targetB }, palette, useTrans);
+
+                    data[pixelIdx] = closest.r;
+                    data[pixelIdx+1] = closest.g;
+                    data[pixelIdx+2] = closest.b;
+                    data[pixelIdx+3] = 255;
+
+                    // Compute error delta values
+                    const diffR = targetR - closest.r;
+                    const diffG = targetG - closest.g;
+                    const diffB = targetB - closest.b;
+
+                    // Distribute visual errors to neighboring coordinates
+                    const distributeError = (nx, ny, weight) => {
+                        if (nx >= 0 && nx < w && ny >= 0 && ny < h) {
+                            const nIdx = ny * w + nx;
+                            errR[nIdx] += diffR * weight;
+                            errG[nIdx] += diffG * weight;
+                            errB[nIdx] += diffB * weight;
+                        }
+                    };
+
+                    distributeError(x + 1, y, 7 / 16);
+                    distributeError(x - 1, y + 1, 3 / 16);
+                    distributeError(x,     y + 1, 5 / 16);
+                    distributeError(x + 1, y + 1, 1 / 16);
+                }
+            }
+        }
+
+        // PALETTE INSPECTION UI GENERATOR
+        function cleanupPaletteSwatches() {
+            swatchesGrid.innerHTML = "";
+            noPaletteTxt.classList.remove("hidden");
+            colorDetailPanel.classList.add("hidden");
+            palCountBadge.textContent = "0 / 0 Colors";
+            selectedPaletteIndex = null;
+        }
+
+        function updatePaletteSwatches() {
+            cleanupPaletteSwatches();
+            if (dsPalette.length === 0) return;
+
+            noPaletteTxt.classList.add("hidden");
+            palCountBadge.textContent = `${dsPalette.filter(c => c.raw555 !== 0 || c.isTrans).length} / ${dsPalette.length} Colors`;
+
+            dsPalette.forEach((col, idx) => {
+                const swatch = document.createElement("button");
+                const hexVal = rgbToHex(col.r, col.g, col.b);
+                
+                swatch.className = "aspect-square w-full rounded border border-slate-200 hover:scale-110 hover:border-blue-400 transition relative flex items-center justify-center shadow-sm";
+                swatch.style.backgroundColor = hexVal;
+                swatch.title = `Index #${idx} - ${hexVal}`;
+
+                // Transparency index pattern marker indicator
+                if (col.isTrans) {
+                    const badge = document.createElement("div");
+                    badge.className = "absolute inset-0 bg-gradient-to-tr from-blue-500/30 via-transparent to-sky-500/30 rounded flex items-center justify-center";
+                    badge.innerHTML = `<span class="text-[8px] font-bold text-blue-600">T</span>`;
+                    swatch.appendChild(badge);
+                }
+
+                swatch.addEventListener('click', () => {
+                    selectSwatchDetail(idx, col, hexVal);
+                });
+
+                swatchesGrid.appendChild(swatch);
+            });
+        }
+
+        function selectSwatchDetail(idx, col, hexVal) {
+            selectedPaletteIndex = idx;
+            colorDetailPanel.classList.remove("hidden");
+            
+            detailColorSwatch.style.backgroundColor = hexVal;
+            detailColorIdx.textContent = `Index: #${idx}`;
+            detailHex.textContent = hexVal;
+
+            // Format BGR555 binary data to Grit hexadecimal representation (e.g. 0x7FFF)
+            const bgrHex = "0x" + col.raw555.toString(16).toUpperCase().padStart(4, '0');
+            detailBgr555.textContent = `${bgrHex} (555)`;
+
+            if (col.isTrans) {
+                detailTransTag.classList.remove("hidden");
+                detailColorSwatch.style.backgroundImage = "linear-gradient(45deg, #ff00ff 25%, transparent 25%), linear-gradient(-45deg, #ff00ff 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #ff00ff 75%), linear-gradient(-45deg, transparent 75%, #ff00ff 75%)";
+                detailColorSwatch.style.backgroundSize = "8px 8px";
+            } else {
+                detailTransTag.classList.add("hidden");
+                detailColorSwatch.style.backgroundImage = "none";
+            }
+        }
+
+        // Copy DS BGR555 hexadecimal value to user clipboard
+        function copyDSColorHex() {
+            if (selectedPaletteIndex === null) return;
+            const col = dsPalette[selectedPaletteIndex];
+            const bgrHex = "0x" + col.raw555.toString(16).toUpperCase().padStart(4, '0');
+            
+            // Safe fallback method to write data directly in iframe
+            const el = document.createElement('textarea');
+            el.value = bgrHex;
+            document.body.appendChild(el);
+            el.select();
+            document.execCommand('copy');
+            document.body.removeChild(el);
+
+            showToast(`Copied ${bgrHex} to clipboard!`);
+        }
+
+        // GPF (Grit Palette File) Exporter Generator
+        function exportGritPalette() {
+            if (dsPalette.length === 0) {
+                showToast("No active palette data to export", "error");
+                return;
+            }
+
+            // A standard .gpf file is a raw binary array of 16-bit values
+            const buffer = new ArrayBuffer(dsPalette.length * 2);
+            const view = new DataView(buffer);
+
+            dsPalette.forEach((col, idx) => {
+                view.setUint16(idx * 2, col.raw555, true); // Little Endian format
+            });
+
+            const blob = new Blob([buffer], { type: "application/octet-stream" });
+            const link = document.createElement("a");
+            link.href = URL.createObjectURL(blob);
+            link.download = activeFile.name.substring(0, activeFile.name.lastIndexOf('.')) + ".gpf";
+            link.click();
+            URL.revokeObjectURL(link.href);
+            showToast("Successfully downloaded NDS .gpf Palette!");
+        }
+
+        // Export Single Frame DS PNG
+        function exportSingleFramePng() {
+            const link = document.createElement("a");
+            link.href = dsCanvas.toDataURL("image/png");
+            
+            const suffix = isSpriteMode ? `_sprite_${selectedResolution}` : `_bg_${selectedResolution}`;
+            link.download = activeFile.name.substring(0, activeFile.name.lastIndexOf('.')) + `${suffix}_nds.png`;
+            link.click();
+            showToast("DS Image exported successfully!");
+        }
+
+        // Spritesheet Stitcher Export Engine
+        function exportSpritesheetPng() {
+            if (!isGif || gifFramesData.length === 0) {
+                showToast("Spritesheet generation requires an active Animated GIF animation", "error");
+                return;
+            }
+
+            const frameW = dsCanvas.width;
+            const frameH = dsCanvas.height;
+            const totalFrames = gifFramesData.length;
+
+            // Compute layout grids configuration size based on standard spritesheets formats bounds
+            const columns = Math.ceil(Math.sqrt(totalFrames));
+            const rows = Math.ceil(totalFrames / columns);
+
+            const sheetCanvas = document.createElement("canvas");
+            sheetCanvas.width = columns * frameW;
+            sheetCanvas.height = rows * frameH;
+            const sheetCtx = sheetCanvas.getContext("2d");
+
+            gifFramesData.forEach((frame, idx) => {
+                const col = idx % columns;
+                const row = Math.floor(idx / columns);
+                sheetCtx.drawImage(frame.canvas, col * frameW, row * frameH);
+            });
+
+            const link = document.createElement("a");
+            link.href = sheetCanvas.toDataURL("image/png");
+            link.download = activeFile.name.substring(0, activeFile.name.lastIndexOf('.')) + "_spritesheet_nds.png";
+            link.click();
+            showToast(`Spritesheet stitched successfully (${columns}x${rows} grid)!`);
+        }
+
+        // Export Frames to ZIP Package
+        async function exportFramesZip() {
+            if (!isGif || gifFramesData.length === 0) {
+                showToast("ZIP export requires an active GIF loaded", "error");
+                return;
+            }
+
+            const zip = new JSZip();
+            const baseName = activeFile.name.substring(0, activeFile.name.lastIndexOf('.'));
+
+            for (let i = 0; i < gifFramesData.length; i++) {
+                const canvas = gifFramesData[i].canvas;
+                const dataUrl = canvas.toDataURL("image/png");
+                const base64Data = dataUrl.split(',')[1];
+                zip.file(`${baseName}_frame_${String(i).padStart(3, '0')}.png`, base64Data, { base64: true });
+            }
+
+            showToast("Generating ZIP archive...");
+            
+            zip.generateAsync({ type: "blob" }).then(function(content) {
+                const link = document.createElement("a");
+                link.href = URL.createObjectURL(content);
+                link.download = `${baseName}_frames_nds.zip`;
+                link.click();
+                URL.revokeObjectURL(link.href);
+                showToast("ZIP Archive exported successfully!");
+            });
+        }
+
+        // UTILITIES
+        function hexToRgb(hex) {
+            const r = parseInt(hex.slice(1, 3), 16);
+            const g = parseInt(hex.slice(3, 5), 16);
+            const b = parseInt(hex.slice(5, 7), 16);
+            return { r, g, b };
+        }
+
+        function rgbToHex(r, g, b) {
+            return "#" + ((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase();
+        }
+
+        // TOAST ENGINE NOTIFICATIONS
+        function showToast(message, type = "success") {
+            const container = document.getElementById("toast-container");
+            const toast = document.createElement("div");
+            
+            const isError = type === "error";
+            const bgClass = isError ? "bg-red-50 border-red-200 text-red-700 shadow-red-500/5" : "bg-white border-blue-100 text-blue-700 shadow-blue-500/5";
+            const icon = isError ? "alert-triangle" : "check-circle";
+
+            toast.className = `flex items-center gap-2.5 px-4 py-3 rounded-lg border shadow-xl backdrop-blur transition-all duration-300 transform translate-y-2 opacity-0 ${bgClass}`;
+            toast.innerHTML = `
+                <i data-lucide="${icon}" class="w-4 h-4 shrink-0 ${isError ? 'text-red-500' : 'text-blue-600'}"></i>
+                <span class="text-xs font-semibold leading-none">${message}</span>
+            `;
+
+            container.appendChild(toast);
+            lucide.createIcons();
+
+            // Trigger Animation entrance
+            setTimeout(() => {
+                toast.classList.remove("translate-y-2", "opacity-0");
+            }, 10);
+
+            // Remove Toast after timeout
+            setTimeout(() => {
+                toast.classList.add("opacity-0", "translate-y-1");
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+    </script>
+</body>
+</html>
